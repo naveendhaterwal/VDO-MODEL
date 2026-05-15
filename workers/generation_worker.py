@@ -1,6 +1,8 @@
 import logging
 import threading
 import time
+import torch
+import gc
 from orchestration.pipeline import CinematicPipeline
 from storage.checkpoint import CheckpointManager
 
@@ -36,3 +38,8 @@ def generate_video_task(job_id: str, prompt: str):
     finally:
         stop_event.set()
         heartbeat_thread.join()
+        
+        # Absolute guarantee that VRAM is released after every job (success or fail)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            gc.collect()

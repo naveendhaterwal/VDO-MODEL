@@ -1,6 +1,9 @@
 import os
 import json
 import logging
+import re
+import gc
+import torch
 from typing import Dict, Any
 
 from storage.checkpoint import CheckpointManager
@@ -45,8 +48,33 @@ class CinematicPipeline:
                 )
                 response = chat.generate(prompt, system_prompt=system_prompt)
                 
-            json_str = response[response.find("{"):response.rfind("}")+1]
-            screenplay = json.loads(json_str)
+            # Aggressive VRAM cleanup after LLM
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                gc.collect()
+                
+            try:
+                # Robust Regex to find JSON block even if wrapped in markdown
+                match = re.search(r'\{.*\}', response, re.DOTALL)
+                if not match:
+                    raise ValueError(f"No JSON block found in response")
+                json_str = match.group(0)
+                screenplay = json.loads(json_str)
+                
+                if "scenes" not in screenplay or not isinstance(screenplay["scenes"], list) or len(screenplay["scenes"]) == 0:
+                    raise ValueError("JSON parsed successfully but 'scenes' array is missing or empty.")
+                    
+            except Exception as e:
+                logger.error(f"[{job_id}] Screenplay parsing failed ({e}). Falling back to generic 1-scene screenplay.")
+                screenplay = {
+                    "scenes": [
+                        {
+                            "scene_number": 1,
+                            "image_prompt": f"High quality cinematic shot of: {prompt}",
+                            "video_prompt": f"Slow cinematic pan, highly detailed: {prompt}"
+                        }
+                    ]
+                }
             
             # Save to disk
             with open(os.path.join(job_dir, "screenplay.json"), "w") as f:
@@ -80,6 +108,11 @@ class CinematicPipeline:
                     state["scene_images"][sn] = out_path
                     self.checkpoint.save_state(job_id, state)
                     
+            # Aggressive VRAM cleanup after Image Gen
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                gc.collect()
+                    
             state["status"] = "generating_videos"
             self.checkpoint.save_state(job_id, state)
             
@@ -105,6 +138,11 @@ class CinematicPipeline:
                         state["scene_videos"] = {}
                     state["scene_videos"][sn] = out_path
                     self.checkpoint.save_state(job_id, state)
+                    
+            # Aggressive VRAM cleanup after Video Gen
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                gc.collect()
                     
             state["status"] = "assembling_video"
             self.checkpoint.save_state(job_id, state)
