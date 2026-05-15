@@ -1,0 +1,29 @@
+{
+  "ops": [
+    {
+      "id": "Cinematic-Worker",
+      "args": {
+        "cmd": [
+          "/bin/bash",
+          "/app/scripts/start_worker.sh"
+        ],
+        "gpu": true,
+        "image": "docker.io/naveendhaterwal/vimax:latest",
+        "expose": 8000,
+        "env": {
+          "REDIS_URL": "redis://localhost:6379",
+          "MODEL_DIR": "/app/models"
+        }
+      },
+      "type": "container/run"
+    }
+  ],
+  "meta": {
+    "trigger": "dashboard",
+    "system_requirements": {
+      "required_vram": 24
+    }
+  },
+  "type": "container",
+  "version": "0.1"
+}
