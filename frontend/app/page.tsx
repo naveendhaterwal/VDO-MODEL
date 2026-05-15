@@ -18,7 +18,7 @@ export default function Home() {
     setVideoUrl(null);
 
     try {
-      const res = await fetch("http://localhost:8000/generate", {
+      const res = await fetch("https://5fvux237qwz7lqrrh5arqd9lztvrtzhjad7tjwjwmyhk.node.k8s.prd.nos.ci/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
@@ -37,11 +37,11 @@ export default function Home() {
     if (jobId && (status === "queued" || status === "started" || status === "deferred")) {
       interval = setInterval(async () => {
         try {
-          const res = await fetch(`http://localhost:8000/status/${jobId}`);
+          const res = await fetch(`https://5fvux237qwz7lqrrh5arqd9lztvrtzhjad7tjwjwmyhk.node.k8s.prd.nos.ci/status/${jobId}`);
           const data = await res.json();
           setStatus(data.status);
           if (data.status === "finished" && data.result) {
-            setVideoUrl(`http://localhost:8000${data.result}`);
+            setVideoUrl(`https://5fvux237qwz7lqrrh5arqd9lztvrtzhjad7tjwjwmyhk.node.k8s.prd.nos.ci${data.result}`);
           }
         } catch (err) {
           console.error(err);

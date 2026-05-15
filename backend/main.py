@@ -1,6 +1,7 @@
 import os
 import uuid
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 from redis import Redis
@@ -12,6 +13,14 @@ import time
 from workers.generation_worker import generate_video_task
 
 app = FastAPI(title="Nosana Cinematic Video API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Prometheus Metrics
 REQUEST_COUNT = Counter("api_requests_total", "Total requests received", ["endpoint", "method"])

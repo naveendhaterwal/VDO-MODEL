@@ -36,5 +36,6 @@ jobs:
           tags: |
             naveendhaterwal/vimax:latest
             naveendhaterwal/vimax:v2
+            naveendhaterwal/vimax:v3
           cache-from: type=registry,ref=naveendhaterwal/vimax:buildcache
           cache-to: type=registry,ref=naveendhaterwal/vimax:buildcache,mode=max
