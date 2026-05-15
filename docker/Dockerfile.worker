@@ -21,8 +21,8 @@ RUN python -m pip install --upgrade pip
 # Create workspace
 WORKDIR /app
 
-# Install PyTorch - use 2.3.1 which is the latest available for cu121 on x86_64 Linux
-RUN pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cu121
+# Install PyTorch 2.4.1 (required by transformers >= 4.45 and Wan2.1)
+RUN pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu121
 
 # Install diffusers, transformers, accelerate, vLLM (optional), fastAPI, redis, rq, and other dependencies
 RUN pip install \
@@ -35,7 +35,7 @@ RUN pip install \
     fastapi \
     uvicorn \
     pydantic \
-    moviepy \
+    "moviepy<2.0.0" \
     python-dotenv \
     hf_transfer \
     huggingface_hub \
