@@ -27,14 +27,14 @@ RUN pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url h
 # Install diffusers, transformers, accelerate, vLLM (optional), fastAPI, redis, rq, and other dependencies
 RUN pip install \
     diffusers[torch] \
-    transformers \
+    "transformers<=4.44.2" \
     accelerate \
     safetensors \
     redis \
     rq \
     fastapi \
     uvicorn \
-    pydantic \
+    "pydantic<2.0.0" \
     "moviepy<2.0.0" \
     python-dotenv \
     hf_transfer \
