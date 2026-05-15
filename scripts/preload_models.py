@@ -36,7 +36,8 @@ def main():
                 local_dir=local_dir,
                 local_dir_use_symlinks=False,
                 resume_download=True,
-                max_workers=4,
+                max_workers=1,
+                ignore_patterns=["*.msgpack", "*.h5", "*.ot", "*onnx*", "*openvino*", "*coreml*", "*flax*"],
                 token=HF_TOKEN if HF_TOKEN else None
             )
             print(f"[OK] Successfully loaded {repo_id}")
