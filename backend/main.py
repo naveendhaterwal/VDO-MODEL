@@ -58,8 +58,9 @@ async def generate_video(req: GenerateRequest):
     job_id = str(uuid.uuid4())
     job = q.enqueue(
         generate_video_task,
+        job_id,
+        req.prompt,
         job_id=job_id,
-        prompt=req.prompt,
         job_timeout='2h' # Increased to 2h for robust retries
     )
     JOB_CREATED.inc()
