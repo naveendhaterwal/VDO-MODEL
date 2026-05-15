@@ -3,51 +3,56 @@ FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV VRAM_LIMIT_GB=24
+ENV HF_HUB_ENABLE_HF_TRANSFER=1
 
-# Install system dependencies (including redis-server for local queue)
+# 1. Install System Dependencies (Hardened)
 RUN apt-get update && apt-get install -y \
     python3.10 python3.10-venv python3-pip \
     git ffmpeg libsm6 libxext6 \
-    wget curl unzip \
+    libgl1-mesa-glx libglib2.0-0 \
+    procps wget curl unzip \
     redis-server \
     && rm -rf /var/lib/apt/lists/*
 
-# Set up Python symlinks
-RUN ln -s /usr/bin/python3.10 /usr/bin/python
+RUN ln -s /usr/bin/python3.10 /usr/bin/python && \
+    python -m pip install --upgrade pip
 
-# Upgrade pip
-RUN python -m pip install --upgrade pip
-
-# Create workspace
 WORKDIR /app
 
-# Install PyTorch 2.4.1 (required by transformers >= 4.45 and Wan2.1)
-RUN pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu121
+# 2. Install Core AI Stack (Pinned & Verified)
+# Pinning to specific compatible release for RTX 4090 / CUDA 12.1
+RUN pip install --no-cache-dir \
+    torch==2.4.1 \
+    torchvision==0.19.1 \
+    torchaudio==2.4.1 \
+    --index-url https://download.pytorch.org/whl/cu121
 
-# Install diffusers, transformers, accelerate, vLLM (optional), fastAPI, redis, rq, and other dependencies
-RUN pip install \
-    diffusers[torch] \
-    "transformers<=4.44.2" \
-    accelerate \
-    safetensors \
-    redis \
-    rq \
-    fastapi \
-    uvicorn \
+# 3. Install Transitive Dependencies (Pinned to prevent future breakages)
+RUN pip install --no-cache-dir \
+    "diffusers==0.30.3" \
+    "transformers==4.44.2" \
+    "accelerate==0.34.2" \
+    "safetensors==0.4.5" \
+    "bitsandbytes==0.43.3" \
     "pydantic<2.0.0" \
     "moviepy<2.0.0" \
-    python-dotenv \
-    hf_transfer \
-    huggingface_hub \
-    prometheus-client
+    "fastapi==0.115.0" \
+    "uvicorn==0.30.6" \
+    "redis==5.0.8" \
+    "rq==1.16.2" \
+    "python-dotenv==1.0.1" \
+    "hf_transfer==0.1.8" \
+    "huggingface_hub==0.25.1" \
+    "prometheus-client==0.21.0" \
+    "protobuf==5.28.2" \
+    "sentencepiece==0.2.0"
 
-# Enable faster downloads
-ENV HF_HUB_ENABLE_HF_TRANSFER=1
-# HuggingFace token - pass at runtime via Nosana env vars for gated models
-ENV HF_TOKEN=""
-
-# Copy source code
+# 4. Copy Code
 COPY . /app/
 
-# Entrypoint will handle model preloading and worker start
+# 5. Runtime Checks & Startup
+# HEALTHCHECK to notify Nosana if the container stalls
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
 CMD ["bash", "/app/scripts/start_worker.sh"]

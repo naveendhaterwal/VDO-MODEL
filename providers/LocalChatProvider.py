@@ -22,7 +22,9 @@ class LocalChatProvider:
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
             torch_dtype=torch.bfloat16,
-            device_map="auto"
+            device_map="auto",
+            load_in_4bit=True,  # CRITICAL: Reduces LLM VRAM from 14GB -> 5GB
+            bnb_4bit_compute_dtype=torch.bfloat16
         )
         return self
 

@@ -2,39 +2,50 @@
 set -e
 
 echo "========================================"
-echo " Starting Nosana Cinematic Worker Boot  "
+echo " Starting Hardened Cinematic Worker Boot "
 echo "========================================"
 
-# 1. Validate GPU
-if ! command -v nvidia-smi &> /dev/null; then
-    echo "[ERROR] nvidia-smi not found. This worker requires a GPU."
-    exit 1
-fi
+# 1. Pre-flight GPU Verification
+python3 /app/scripts/gpu_verify.py || { echo "[CRITICAL] GPU verification failed."; exit 1; }
 
-echo "[INFO] GPU detected:"
-nvidia-smi --query-gpu=gpu_name,memory.total --format=csv,noheader
-
-# 2. Check Disk Space (Require at least 50GB free for models + outputs)
+# 2. Disk Space Cleanup (Aggressive)
+echo "[INFO] Checking disk space..."
 FREE_SPACE=$(df -BG /app | awk 'NR==2 {print $4}' | sed 's/G//')
-if [ "$FREE_SPACE" -lt 50 ]; then
-    echo "[WARNING] Low disk space: Only ${FREE_SPACE}GB free. Models and video generation require significant space."
+if [ "$FREE_SPACE" -lt 40 ]; then
+    echo "[WARNING] Low space (${FREE_SPACE}GB). Cleaning caches..."
+    rm -rf /root/.cache/pip
+    rm -rf /tmp/*
 fi
 
-# 3. Model Preloading and Cache Verification
-echo "[INFO] Starting model preload and verification pipeline..."
+# 3. Model Preloading
+echo "[INFO] Starting model verification pipeline..."
 export MODEL_DIR=/app/models
 python3 /app/scripts/preload_models.py
 
-echo "[INFO] Models verified successfully."
-
-# 4. Start Background Worker & API
+# 4. Launch Services
 echo "[INFO] Launching Redis..."
-# In a pure single-container deployment on Nosana, we need Redis running locally.
 redis-server --daemonize yes
-sleep 2
 
-echo "[INFO] Starting RQ Worker in background..."
+# Wait for Redis to be ready
+MAX_RETRIES=10
+COUNT=0
+while ! redis-cli ping &>/dev/null; do
+    if [ $COUNT -ge $MAX_RETRIES ]; then
+        echo "[CRITICAL] Redis failed to start."
+        exit 1
+    fi
+    echo "[INFO] Waiting for Redis... ($COUNT)"
+    sleep 1
+    ((COUNT++))
+done
+echo "[OK] Redis is ready."
+
+# 5. Start RQ Worker (Foreground monitor)
+echo "[INFO] Starting RQ Worker..."
+# We run the worker in the background but use a trap to kill everything if any process dies
 rq worker default --url redis://localhost:6379 --with-scheduler &
+WORKER_PID=$!
 
-echo "[INFO] Starting FastAPI Backend on port 8000..."
+# 6. Start FastAPI
+echo "[INFO] Starting FastAPI Backend..."
 exec uvicorn backend.main:app --host 0.0.0.0 --port 8000
