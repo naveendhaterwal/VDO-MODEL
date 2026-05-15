@@ -33,6 +33,8 @@ jobs:
           file: ./docker/Dockerfile.worker
           platforms: linux/amd64
           push: true
-          tags: naveendhaterwal/vimax:latest
+          tags: |
+            naveendhaterwal/vimax:latest
+            naveendhaterwal/vimax:v2
           cache-from: type=registry,ref=naveendhaterwal/vimax:buildcache
           cache-to: type=registry,ref=naveendhaterwal/vimax:buildcache,mode=max
