@@ -1,3 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body {
+  background-color: #020617; /* OLED Black base */
+  color: #e1e2ec;
+}
+
+.glass-panel {
+  background-color: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid #1e293b;
+}
+
+.neon-shadow-primary {
+  box-shadow: 0 0 15px 0 rgba(77, 142, 255, 0.15);
+}
+
+.neon-shadow-secondary {
+  box-shadow: 0 0 15px 0 rgba(255, 182, 144, 0.15);
+}
+
+/* Custom scrollbar for terminal */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #32353c;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #424754;
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+  'FILL' 0,
+  'wght' 400,
+  'GRAD' 0,
+  'opsz' 24
+}

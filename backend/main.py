@@ -3,6 +3,7 @@ import uuid
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from redis import Redis
 from rq import Queue
@@ -104,3 +105,6 @@ async def health_check():
 async def metrics():
     """Prometheus metrics endpoint"""
     return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+# Mount the static frontend build
+app.mount("/", StaticFiles(directory="/app/frontend/out", html=True), name="frontend")
