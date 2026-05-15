@@ -10,7 +10,7 @@ HF_TOKEN = os.environ.get("HF_TOKEN", "")
 MODELS_TO_DOWNLOAD = [
     "Qwen/Qwen2.5-7B-Instruct",                      # LLM for screenplay - PUBLIC
     "stabilityai/stable-diffusion-xl-base-1.0",       # Image gen - PUBLIC (replaces gated FLUX)
-    "Wan-AI/Wan2.1-T2V-1.3B",                         # Video gen - PUBLIC
+    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",               # Video gen - PUBLIC (Diffusers compatible)
 ]
 
 def main():

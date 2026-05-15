@@ -9,7 +9,7 @@ from diffusers.image_processor import VaeImageProcessor
 from monitoring.memory_watchdog import MemoryWatchdog
 
 logger = logging.getLogger(__name__)
-MODEL_PATH = os.path.join(os.environ.get("MODEL_DIR", "/app/models"), "Wan2.1-T2V-1.3B")
+MODEL_PATH = os.path.join(os.environ.get("MODEL_DIR", "/app/models"), "Wan2.1-T2V-1.3B-Diffusers")
 
 class LocalVideoProvider:
     def __init__(self):
