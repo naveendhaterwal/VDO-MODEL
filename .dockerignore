@@ -5,7 +5,6 @@
 models_bundle/
 frontend/node_modules/
 frontend/.next/
-frontend/package-lock.json
 __pycache__/
 *.pyc
 *.pyo
