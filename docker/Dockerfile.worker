@@ -38,8 +38,8 @@ RUN pip install --no-cache-dir \
 
 # 3. Install Transitive Dependencies (Pinned to prevent future breakages)
 RUN pip install --no-cache-dir \
-    "diffusers==0.30.3" \
-    "transformers==4.44.2" \
+    "diffusers==0.38.0" \
+    "transformers==4.49.0" \
     "accelerate==0.34.2" \
     "safetensors==0.4.5" \
     "bitsandbytes==0.43.3" \
