@@ -8,7 +8,7 @@
           "/app/scripts/start_worker.sh"
         ],
         "gpu": true,
-        "image": "docker.io/naveendhaterwal/vimax:v6",
+        "image": "docker.io/naveendhaterwal/vimax:v7",
         "expose": 8000,
         "env": {
           "REDIS_URL": "redis://localhost:6379",

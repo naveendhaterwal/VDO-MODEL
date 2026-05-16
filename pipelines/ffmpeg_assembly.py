@@ -1,7 +1,10 @@
 import os
 import logging
 from typing import List
-from moviepy.editor import VideoFileClip, concatenate_videoclips
+try:
+    from moviepy import VideoFileClip, concatenate_videoclips  # moviepy v2
+except ImportError:
+    from moviepy.editor import VideoFileClip, concatenate_videoclips  # moviepy v1 fallback
 
 logger = logging.getLogger(__name__)
 

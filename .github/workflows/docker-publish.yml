@@ -35,6 +35,6 @@ jobs:
           push: true
           tags: |
             naveendhaterwal/vimax:latest
-            naveendhaterwal/vimax:v6
+            naveendhaterwal/vimax:v7
           cache-from: type=registry,ref=naveendhaterwal/vimax:buildcache
           cache-to: type=registry,ref=naveendhaterwal/vimax:buildcache,mode=max
