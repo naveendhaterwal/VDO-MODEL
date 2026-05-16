@@ -7,62 +7,64 @@ COPY frontend/ .
 RUN npm run build
 
 # Stage 2: Runtime Environment
-FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV VRAM_LIMIT_GB=24
-ENV HF_HUB_ENABLE_HF_TRANSFER=1
+ENV MODEL_DIR=/app/models
+ENV OUTPUT_DIR=/app/outputs
 
-# 1. Install System Dependencies (Hardened)
+# 1. Install System Dependencies
 RUN apt-get update && apt-get install -y \
     python3.10 python3.10-venv python3-pip \
     git ffmpeg libsm6 libxext6 \
     libgl1-mesa-glx libglib2.0-0 \
     procps wget curl unzip \
-    redis-server \
     && rm -rf /var/lib/apt/lists/*
 
 RUN ln -s /usr/bin/python3.10 /usr/bin/python && \
-    python -m pip install --upgrade pip
+    python -m pip install --upgrade "pip<24.0"
 
 WORKDIR /app
 
-# 2. Install Core AI Stack (Pinned & Verified)
-# Pinning to specific compatible release for RTX 4090 / CUDA 12.1
+# 2. Install Core AI Stack (Pinned & Verified for CUDA 12.1)
 RUN pip install --no-cache-dir \
     torch==2.4.1 \
     torchvision==0.19.1 \
     torchaudio==2.4.1 \
     --index-url https://download.pytorch.org/whl/cu121
 
-# 3. Install Transitive Dependencies (Pinned to prevent future breakages)
+# 3. Install Application Dependencies
 RUN pip install --no-cache-dir \
-    "diffusers==0.38.0" \
-    "transformers==4.49.0" \
-    "accelerate==0.34.2" \
-    "safetensors==0.4.5" \
-    "bitsandbytes==0.43.3" \
-    "pydantic<2.0.0" \
-    "moviepy<2.0.0" \
-    "fastapi==0.115.0" \
-    "uvicorn==0.30.6" \
-    "redis==5.0.8" \
-    "rq==1.16.2" \
-    "python-dotenv==1.0.1" \
-    "hf_transfer==0.1.8" \
-    "huggingface_hub==0.25.1" \
-    "prometheus-client==0.21.0" \
-    "protobuf==5.28.2" \
-    "sentencepiece==0.2.0"
+    "diffusers>=0.32.0,<0.39.0" \
+    "transformers>=4.44.0,<4.50.0" \
+    "accelerate>=0.33.0,<0.35.0" \
+    "safetensors>=0.4.0,<0.5.0" \
+    "bitsandbytes>=0.43.0,<0.44.0" \
+    "xformers==0.0.27" \
+    "numpy<2.0.0" \
+    "moviepy>=1.0.3,<3.0.0" \
+    "fastapi>=0.110.0,<0.116.0" \
+    "uvicorn>=0.29.0,<0.31.0" \
+    "redis>=5.0.0,<6.0.0" \
+    "rq>=1.16.0,<2.0.0" \
+    "python-dotenv>=1.0.0,<2.0.0" \
+    "huggingface_hub>=0.24.0,<0.26.0" \
+    "prometheus-client>=0.20.0,<0.22.0" \
+    "protobuf>=5.27.0,<5.29.0" \
+    "sentencepiece>=0.2.0,<0.3.0" \
+    "pydantic"
 
 # 4. Copy Code
 COPY . /app/
 COPY --from=frontend-builder /app/frontend/out /app/frontend/out
 
-# 5. Runtime Checks & Startup
-# HEALTHCHECK to notify Nosana if the container stalls
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+# 5. Create output dir
+RUN mkdir -p /app/outputs
+
+# 6. Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 CMD ["bash", "/app/scripts/start_worker.sh"]

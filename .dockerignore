@@ -1,0 +1,15 @@
+.git/
+.gitignore
+.pytest_cache/
+.vscode/
+models_bundle/
+frontend/node_modules/
+frontend/.next/
+frontend/package-lock.json
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+.env
+.env.*
+*.md

@@ -1,27 +1,50 @@
 import os
+import time
 from huggingface_hub import snapshot_download, login
 
 MODEL_DIR = os.environ.get("MODEL_DIR", "/app/models")
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
-# Model list - all PUBLIC, no gated models required.
-# FLUX.1-schnell is gated (requires HF approval). We use SDXL as the image backbone instead.
-# Wan2.1-T2V-1.3B is the correct public repo ID for text-to-video.
 MODELS_TO_DOWNLOAD = [
-    "Qwen/Qwen2.5-7B-Instruct",                      # LLM for screenplay - PUBLIC
-    "stabilityai/stable-diffusion-xl-base-1.0",       # Image gen - PUBLIC (replaces gated FLUX)
-    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",               # Video gen - PUBLIC (Diffusers compatible)
+    "Qwen/Qwen2.5-7B-Instruct",
+    "stabilityai/stable-diffusion-xl-base-1.0",
+    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
 ]
+
+
+def download_with_retry(repo_id, local_dir, token, max_retries=3, delay=5):
+    for attempt in range(max_retries):
+        try:
+            snapshot_download(
+                repo_id=repo_id,
+                local_dir=local_dir,
+                local_dir_use_symlinks=True,
+                resume_download=True,
+                max_workers=8,
+                ignore_patterns=[
+                    "*.msgpack", "*.h5", "*.ot",
+                    "*onnx*", "*openvino*", "*coreml*", "*flax*",
+                ],
+                token=token,
+            )
+            return True
+        except Exception as e:
+            print(f"[WARNING] Attempt {attempt + 1}/{max_retries} failed for {repo_id}: {e}")
+            if attempt < max_retries - 1:
+                print(f"[RETRY] Retrying in {delay}s...")
+                time.sleep(delay)
+            else:
+                print(f"[ERROR] All {max_retries} attempts failed for {repo_id}")
+                return False
+    return False
+
 
 def main():
     os.makedirs(MODEL_DIR, exist_ok=True)
 
-    # Authenticate if HF_TOKEN is provided (needed for any gated models added later)
     if HF_TOKEN:
         print("Authenticating with HuggingFace...")
         login(token=HF_TOKEN)
-    else:
-        print("No HF_TOKEN set - downloading public models only.")
 
     print(f"Preloading models into {MODEL_DIR}...")
 
@@ -29,20 +52,21 @@ def main():
     for repo_id in MODELS_TO_DOWNLOAD:
         model_name = repo_id.split("/")[-1]
         local_dir = os.path.join(MODEL_DIR, model_name)
-        print(f"Checking {repo_id}...")
-        try:
-            snapshot_download(
-                repo_id=repo_id,
-                local_dir=local_dir,
-                local_dir_use_symlinks=False,
-                resume_download=True,
-                max_workers=1,
-                ignore_patterns=["*.msgpack", "*.h5", "*.ot", "*onnx*", "*openvino*", "*coreml*", "*flax*"],
-                token=HF_TOKEN if HF_TOKEN else None
-            )
+
+        if os.path.exists(os.path.join(local_dir, "model_index.json")):
+            print(f"[SKIP] {repo_id} already downloaded")
+            continue
+
+        print(f"Downloading {repo_id}...")
+        success = download_with_retry(
+            repo_id,
+            local_dir,
+            token=HF_TOKEN if HF_TOKEN else None
+        )
+        if success:
             print(f"[OK] Successfully loaded {repo_id}")
-        except Exception as e:
-            print(f"[WARNING] Failed to download {repo_id}: {e}")
+        else:
+            print(f"[WARNING] Failed to download {repo_id}")
             failed.append(repo_id)
 
     if failed:
@@ -50,6 +74,7 @@ def main():
         print("The worker will attempt to load them at inference time.")
     else:
         print("\n[OK] All models preloaded successfully.")
+
 
 if __name__ == "__main__":
     main()

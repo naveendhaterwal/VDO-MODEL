@@ -8,11 +8,12 @@
           "/app/scripts/start_worker.sh"
         ],
         "gpu": true,
-        "image": "docker.io/naveendhaterwal/vimax:v8",
+        "image": "docker.io/naveendhaterwal/vimax:latest",
         "expose": 8000,
         "env": {
           "REDIS_URL": "redis://localhost:6379",
-          "MODEL_DIR": "/app/models"
+          "MODEL_DIR": "/app/models",
+          "OUTPUT_DIR": "/app/outputs"
         }
       },
       "type": "container/run"
@@ -21,9 +22,13 @@
   "meta": {
     "trigger": "dashboard",
     "system_requirements": {
-      "required_vram": 24
+      "required_vram": 24,
+      "min_vram": 24,
+      "recommended_gpu": "RTX 4090",
+      "min_cuda_version": "12.1",
+      "recommended_disk": 100
     }
   },
   "type": "container",
-  "version": "0.1"
+  "version": "0.2"
 }
