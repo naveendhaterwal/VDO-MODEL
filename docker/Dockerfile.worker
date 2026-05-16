@@ -11,7 +11,7 @@ FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV VRAM_LIMIT_GB=24
+ENV VRAM_LIMIT_GB=40
 ENV MODEL_DIR=/app/models
 ENV OUTPUT_DIR=/app/outputs
 

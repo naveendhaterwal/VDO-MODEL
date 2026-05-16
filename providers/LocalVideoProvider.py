@@ -17,14 +17,16 @@ class LocalVideoProvider:
 
     def __enter__(self):
         logger.info(f"Loading {self.model_path} into VRAM...")
-        MemoryWatchdog.assert_vram_available(required_gb=12.0)
+        MemoryWatchdog.assert_vram_available(required_gb=20.0)
         cap = torch.cuda.get_device_capability()
         dtype = torch.bfloat16 if cap[0] >= 8 else torch.float16
         self.pipe = DiffusionPipeline.from_pretrained(
             self.model_path,
             torch_dtype=dtype,
         )
-        self.pipe.enable_model_cpu_offload()
+        # A100/H100/L40S have enough VRAM — skip cpu_offload (saves ~30% inference time)
+        # Uncomment the next line only if deploying on a <30GB GPU:
+        # self.pipe.enable_model_cpu_offload()
         self.pipe.enable_vae_slicing()
         try:
             self.pipe.enable_xformers_memory_efficient_attention()

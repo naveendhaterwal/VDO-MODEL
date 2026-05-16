@@ -22,9 +22,9 @@
   "meta": {
     "trigger": "dashboard",
     "system_requirements": {
-      "required_vram": 24,
-      "min_vram": 24,
-      "recommended_gpu": "RTX 4090",
+      "required_vram": 40,
+      "min_vram": 40,
+      "recommended_gpu": "A100 40GB",
       "min_cuda_version": "12.1",
       "recommended_disk": 100
     }
