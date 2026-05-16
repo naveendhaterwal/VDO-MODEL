@@ -19,3 +19,4 @@ prometheus-client>=0.20.0,<0.22.0
 protobuf>=5.27.0,<5.29.0
 sentencepiece>=0.2.0,<0.3.0
 pydantic
+httpx
