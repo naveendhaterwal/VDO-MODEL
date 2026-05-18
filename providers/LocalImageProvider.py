@@ -18,12 +18,22 @@ class LocalImageProvider:
     def __enter__(self):
         logger.info(f"Loading SDXL from {self.model_path} into VRAM...")
         MemoryWatchdog.assert_vram_available(required_gb=10.0)
-        self.pipe = StableDiffusionXLPipeline.from_pretrained(
-            self.model_path,
-            torch_dtype=torch.float16,
-            use_safetensors=True,
-            variant="fp16"
-        )
+        try:
+            # Prefer fp16 variant for smaller memory footprint
+            self.pipe = StableDiffusionXLPipeline.from_pretrained(
+                self.model_path,
+                torch_dtype=torch.float16,
+                use_safetensors=True,
+                variant="fp16",
+            )
+        except Exception:
+            # Fallback: load without variant (e.g. if fp16 files weren't cached)
+            logger.warning("SDXL fp16 variant not found, loading default weights...")
+            self.pipe = StableDiffusionXLPipeline.from_pretrained(
+                self.model_path,
+                torch_dtype=torch.bfloat16,
+                use_safetensors=True,
+            )
         # Offload to CPU between inference calls to keep VRAM free for other models
         self.pipe.enable_model_cpu_offload()
         self.pipe.enable_vae_slicing()

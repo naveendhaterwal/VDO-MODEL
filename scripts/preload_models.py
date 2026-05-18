@@ -18,8 +18,6 @@ def download_with_retry(repo_id, local_dir, token, max_retries=3, delay=5):
             snapshot_download(
                 repo_id=repo_id,
                 local_dir=local_dir,
-                local_dir_use_symlinks=True,
-                resume_download=True,
                 max_workers=8,
                 ignore_patterns=[
                     "*.msgpack", "*.h5", "*.ot",
@@ -53,7 +51,8 @@ def main():
         model_name = repo_id.split("/")[-1]
         local_dir = os.path.join(MODEL_DIR, model_name)
 
-        if os.path.exists(os.path.join(local_dir, "model_index.json")):
+        # config.json is universal: exists for both diffusers pipelines and transformers models
+        if os.path.exists(os.path.join(local_dir, "config.json")):
             print(f"[SKIP] {repo_id} already downloaded")
             continue
 

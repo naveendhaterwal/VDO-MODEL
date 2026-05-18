@@ -34,6 +34,11 @@ class CinematicPipeline:
         logger.info(f"[{job_id}] Starting/Resuming pipeline for prompt: {prompt}")
         state = self.checkpoint.load_state(job_id)
 
+        # Guard: return immediately if already completed with valid video on disk
+        early = self._assert_not_completed(state, job_id)
+        if early:
+            return early
+
         if not state.get("prompt"):
             state["prompt"] = prompt
             state["status"] = "generating_screenplay"
@@ -148,3 +153,14 @@ class CinematicPipeline:
             logger.info(f"[{job_id}] Pipeline complete. Output saved to {final_output}")
 
         return state["final_video"]
+
+    def _assert_not_completed(self, state: Dict[str, Any], job_id: str):
+        """Guard: if job is already completed with a valid video path, return early."""
+        if state.get("status") == "completed":
+            final = state.get("final_video")
+            if final and os.path.exists(final):
+                logger.info(f"[{job_id}] Already completed. Returning existing video: {final}")
+                return final
+            logger.warning(f"[{job_id}] State is 'completed' but video file missing. Re-running assembly stage.")
+            state["status"] = "assembling_video"
+        return None
