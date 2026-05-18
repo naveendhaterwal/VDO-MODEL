@@ -29,6 +29,11 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const detail = errData?.detail?.[0]?.msg ?? `HTTP ${res.status}`;
+        throw new Error(`Server rejected request: ${detail}`);
+      }
       const data = await res.json();
       setJobId(data.job_id);
       setStatus("queued");
@@ -195,13 +200,14 @@ export default function Home() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <label className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Cinematic Prompt</label>
-                <span className="text-xs text-on-surface-variant opacity-70 font-technical-sm">{prompt.length}/1000</span>
+                <span className={`text-xs opacity-70 font-technical-sm ${prompt.length > 1800 ? 'text-error' : 'text-on-surface-variant'}`}>{prompt.length}/2000</span>
               </div>
               <div className="relative">
                 <textarea
                   className="w-full bg-surface-container border border-outline-variant rounded-xl p-4 text-on-surface font-technical-sm text-technical-sm resize-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary focus:neon-shadow-primary transition-all placeholder-on-surface-variant/50"
                   placeholder="Describe your scene in detail..."
                   rows={6}
+                  maxLength={2000}
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                 />
