@@ -2,7 +2,7 @@ import os
 import torch
 import gc
 import logging
-from diffusers import AutoPipelineForText2Video
+from diffusers import WanPipeline
 from diffusers.utils import export_to_video
 from monitoring.memory_watchdog import MemoryWatchdog
 
@@ -20,8 +20,8 @@ class LocalVideoProvider:
         MemoryWatchdog.assert_vram_available(required_gb=20.0)
         cap = torch.cuda.get_device_capability() if torch.cuda.is_available() else (0, 0)
         dtype = torch.bfloat16 if cap[0] >= 8 else torch.float16
-        # AutoPipelineForText2Video correctly resolves WanPipeline from model_index.json
-        self.pipe = AutoPipelineForText2Video.from_pretrained(
+        # WanPipeline correctly resolves and loads Wan2.1 text-to-video models
+        self.pipe = WanPipeline.from_pretrained(
             self.model_path,
             torch_dtype=dtype,
         )
