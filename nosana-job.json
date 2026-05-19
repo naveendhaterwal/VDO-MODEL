@@ -1,24 +1,6 @@
 {
-  "ops": [
-    {
-      "id": "Cinematic-Worker",
-      "args": {
-        "cmd": [
-          "/bin/bash",
-          "/app/scripts/start_worker.sh"
-        ],
-        "gpu": true,
-        "image": "docker.io/naveendhaterwal/vimax:latest",
-        "expose": 8000,
-        "env": {
-          "REDIS_URL": "redis://localhost:6379",
-          "MODEL_DIR": "/app/models",
-          "OUTPUT_DIR": "/app/outputs"
-        }
-      },
-      "type": "container/run"
-    }
-  ],
+  "version": "0.1",
+  "type": "container",
   "meta": {
     "trigger": "dashboard",
     "system_requirements": {
@@ -29,6 +11,35 @@
       "recommended_disk": 100
     }
   },
-  "type": "container",
-  "version": "0.1"
+  "ops": [
+    {
+      "id": "Cinematic-Worker",
+      "type": "container/run",
+      "args": {
+        "image": "docker.io/naveendhaterwal/vimax:latest",
+        "cmd": [
+          "/bin/bash",
+          "/app/scripts/start_worker.sh"
+        ],
+        "gpu": true,
+        "expose": {
+          "port": 8000,
+          "health_checks": [
+            {
+              "type": "http",
+              "method": "GET",
+              "path": "/health",
+              "expected_status": 200,
+              "continuous": true
+            }
+          ]
+        },
+        "env": {
+          "REDIS_URL": "redis://localhost:6379",
+          "MODEL_DIR": "/app/models",
+          "OUTPUT_DIR": "/app/outputs"
+        }
+      }
+    }
+  ]
 }
