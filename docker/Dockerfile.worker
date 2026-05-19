@@ -38,7 +38,7 @@ RUN pip install --no-cache-dir \
 
 # 3. Install Application Dependencies
 RUN pip install --no-cache-dir \
-    "diffusers>=0.32.0,<0.39.0" \
+    "diffusers>=0.38.0,<0.39.0" \
     "transformers>=4.44.0,<4.50.0" \
     "accelerate>=0.33.0,<0.35.0" \
     "safetensors>=0.4.0,<0.5.0" \

@@ -219,7 +219,11 @@ class TestNosanaConfig:
         assert len(config["ops"]) > 0
         op = config["ops"][0]
         assert op["args"]["gpu"] is True
-        assert op["args"]["expose"] == 8000
+        expose = op["args"]["expose"]
+        if isinstance(expose, dict):
+            assert expose["port"] == 8000
+        else:
+            assert expose == 8000
         assert "REDIS_URL" in op["args"]["env"]
 
     def test_system_requirements(self):
