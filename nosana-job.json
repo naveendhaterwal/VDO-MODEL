@@ -22,18 +22,7 @@
           "/app/scripts/start_worker.sh"
         ],
         "gpu": true,
-        "expose": {
-          "port": 8000,
-          "health_checks": [
-            {
-              "type": "http",
-              "method": "GET",
-              "path": "/health",
-              "expected_status": 200,
-              "continuous": true
-            }
-          ]
-        },
+        "expose": 8000,
         "env": {
           "REDIS_URL": "redis://localhost:6379",
           "MODEL_DIR": "/app/models",
