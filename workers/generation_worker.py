@@ -22,7 +22,14 @@ def heartbeat_loop(job_id: str, stop_event: threading.Event):
 
 
 def generate_video_task(job_id: str, prompt: str):
-    logger.info(f"Task started: generate_video_task for job_id={job_id}")
+    import os
+    if os.environ.get("MOCK_INFERENCE") == "1":
+        logger.warning("======================================================")
+        logger.warning(f"Task started in MOCK_INFERENCE mode for job_id={job_id}")
+        logger.warning("GPUs will NOT be used. Dummy videos will be generated.")
+        logger.warning("======================================================")
+    else:
+        logger.info(f"Task started: generate_video_task for job_id={job_id}")
 
     stop_event = threading.Event()
     heartbeat_thread = threading.Thread(target=heartbeat_loop, args=(job_id, stop_event), daemon=True)

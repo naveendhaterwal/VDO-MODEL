@@ -7,7 +7,7 @@
       "required_vram": 40,
       "min_vram": 40,
       "recommended_gpu": "A100 40GB",
-      "min_cuda_version": "12.1",
+      "min_cuda_version": "12.4",
       "recommended_disk": 100
     }
   },
@@ -37,7 +37,8 @@
         "env": {
           "REDIS_URL": "redis://localhost:6379",
           "MODEL_DIR": "/app/models",
-          "OUTPUT_DIR": "/app/outputs"
+          "OUTPUT_DIR": "/app/outputs",
+          "RQ_QUEUE": "cinematic_jobs"
         }
       }
     }

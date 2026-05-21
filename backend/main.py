@@ -13,6 +13,13 @@ from rq import Queue
 from rq.job import Job
 import time
 import logging
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+logger = logging.getLogger("uvicorn.error")
+
+
+
 
 
 from workers.generation_worker import generate_video_task
@@ -22,8 +29,8 @@ logger = logging.getLogger(__name__)
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/app/outputs")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379")
 
-redis_conn = Redis.from_url(REDIS_URL, decode_responses=True)
-q = Queue("default", connection=redis_conn)
+redis_conn = Redis.from_url(REDIS_URL)
+q = Queue("cinematic_jobs", connection=redis_conn)
 
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST, REGISTRY
 
@@ -44,6 +51,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Nosana Cinematic Video API", lifespan=lifespan)
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    try:
+        body = await request.body()
+    except Exception:
+        body = b""
+    logger.error(f"Validation error: {exc.errors()} | Body: {body}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": str(body)},
+    )
 
 app.add_middleware(
     CORSMiddleware,

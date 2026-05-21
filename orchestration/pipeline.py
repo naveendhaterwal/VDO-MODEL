@@ -46,39 +46,59 @@ class CinematicPipeline:
 
         if state["status"] == "generating_screenplay":
             logger.info(f"[{job_id}] Generating Screenplay...")
-            with LocalChatProvider() as chat:
-                system_prompt = (
-                    "You are a cinematic AI director. "
-                    "Given a story prompt, split it into 3 consecutive short scenes. "
-                    "Maintain the exact same protagonist character description across all scenes to ensure visual consistency. "
-                    "Output strictly valid JSON in this format: "
-                    '{"scenes": [{"scene_number": 1, "image_prompt": "Detailed visual description for an image generator", "video_prompt": "Detailed motion description for a video generator"}, ...]}'
-                )
-                response = chat.generate(prompt, system_prompt=system_prompt)
-
-            cleanup_vram()
-
-            try:
-                match = re.search(r'\{.*\}', response, re.DOTALL)
-                if not match:
-                    raise ValueError(f"No JSON block found in response")
-                json_str = match.group(0)
-                screenplay = json.loads(json_str)
-
-                if "scenes" not in screenplay or not isinstance(screenplay["scenes"], list) or len(screenplay["scenes"]) == 0:
-                    raise ValueError("JSON parsed successfully but 'scenes' array is missing or empty.")
-
-            except Exception as e:
-                logger.error(f"[{job_id}] Screenplay parsing failed ({e}). Falling back to generic 1-scene screenplay.")
+            
+            if os.environ.get("MOCK_INFERENCE") == "1":
+                import time
+                time.sleep(2)
+                logger.info(f"[{job_id}] MOCK MODE: Generating dummy screenplay")
                 screenplay = {
                     "scenes": [
                         {
                             "scene_number": 1,
-                            "image_prompt": f"High quality cinematic shot of: {prompt}",
-                            "video_prompt": f"Slow cinematic pan, highly detailed: {prompt}",
+                            "image_prompt": f"MOCK: High quality shot of {prompt}",
+                            "video_prompt": f"MOCK: Slow pan of {prompt}"
+                        },
+                        {
+                            "scene_number": 2,
+                            "image_prompt": f"MOCK: Close up shot of {prompt}",
+                            "video_prompt": f"MOCK: Fast zoom on {prompt}"
                         }
                     ]
                 }
+            else:
+                with LocalChatProvider() as chat:
+                    system_prompt = (
+                        "You are a cinematic AI director. "
+                        "Given a story prompt, split it into 3 consecutive short scenes. "
+                        "Maintain the exact same protagonist character description across all scenes to ensure visual consistency. "
+                        "Output strictly valid JSON in this format: "
+                        '{"scenes": [{"scene_number": 1, "image_prompt": "Detailed visual description for an image generator", "video_prompt": "Detailed motion description for a video generator"}, ...]}'
+                    )
+                    response = chat.generate(prompt, system_prompt=system_prompt)
+    
+                cleanup_vram()
+    
+                try:
+                    match = re.search(r'\{.*\}', response, re.DOTALL)
+                    if not match:
+                        raise ValueError(f"No JSON block found in response")
+                    json_str = match.group(0)
+                    screenplay = json.loads(json_str)
+    
+                    if "scenes" not in screenplay or not isinstance(screenplay["scenes"], list) or len(screenplay["scenes"]) == 0:
+                        raise ValueError("JSON parsed successfully but 'scenes' array is missing or empty.")
+    
+                except Exception as e:
+                    logger.error(f"[{job_id}] Screenplay parsing failed ({e}). Falling back to generic 1-scene screenplay.")
+                    screenplay = {
+                        "scenes": [
+                            {
+                                "scene_number": 1,
+                                "image_prompt": f"High quality cinematic shot of: {prompt}",
+                                "video_prompt": f"Slow cinematic pan, highly detailed: {prompt}",
+                            }
+                        ]
+                    }
 
             with open(os.path.join(job_dir, "screenplay.json"), "w") as f:
                 json.dump(screenplay, f, indent=4)
@@ -91,23 +111,38 @@ class CinematicPipeline:
             logger.info(f"[{job_id}] Generating Keyframes...")
             screenplay = state["screenplay"]
 
-            with LocalImageProvider() as image_provider:
+            if os.environ.get("MOCK_INFERENCE") == "1":
+                import time
+                from PIL import Image
+                time.sleep(2)
                 for scene in screenplay["scenes"]:
                     sn = str(scene["scene_number"])
                     if sn in state.get("scene_images", {}):
-                        logger.info(f"[{job_id}] Skipping image for scene {sn}, already generated.")
                         continue
-
-                    img_prompt = scene["image_prompt"]
                     out_path = os.path.join(job_dir, f"scene_{sn}.png")
-                    image_provider.generate(img_prompt, out_path)
-
+                    Image.new("RGB", (832, 480), color="blue").save(out_path)
                     if "scene_images" not in state:
                         state["scene_images"] = {}
                     state["scene_images"][sn] = out_path
                     self.checkpoint.save_state(job_id, state)
-
-            cleanup_vram()
+            else:
+                with LocalImageProvider() as image_provider:
+                    for scene in screenplay["scenes"]:
+                        sn = str(scene["scene_number"])
+                        if sn in state.get("scene_images", {}):
+                            logger.info(f"[{job_id}] Skipping image for scene {sn}, already generated.")
+                            continue
+    
+                        img_prompt = scene["image_prompt"]
+                        out_path = os.path.join(job_dir, f"scene_{sn}.png")
+                        image_provider.generate(img_prompt, out_path)
+    
+                        if "scene_images" not in state:
+                            state["scene_images"] = {}
+                        state["scene_images"][sn] = out_path
+                        self.checkpoint.save_state(job_id, state)
+    
+                cleanup_vram()
 
             state["status"] = "generating_videos"
             self.checkpoint.save_state(job_id, state)
@@ -116,24 +151,42 @@ class CinematicPipeline:
             logger.info(f"[{job_id}] Generating Video Clips...")
             screenplay = state["screenplay"]
 
-            with LocalVideoProvider() as video_provider:
+            if os.environ.get("MOCK_INFERENCE") == "1":
+                import time
+                from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
+                time.sleep(2)
                 for scene in screenplay["scenes"]:
                     sn = str(scene["scene_number"])
                     if sn in state.get("scene_videos", {}):
-                        logger.info(f"[{job_id}] Skipping video for scene {sn}, already generated.")
                         continue
-
-                    vid_prompt = scene["video_prompt"]
                     out_path = os.path.join(job_dir, f"scene_{sn}.mp4")
-
-                    video_provider.generate_from_text(vid_prompt, out_path)
-
+                    # Generate a simple 2-second video from the dummy image
+                    img_path = state["scene_images"][sn]
+                    clip = ImageSequenceClip([img_path] * 24, fps=12) # 2 seconds
+                    clip.write_videofile(out_path, fps=12, logger=None)
                     if "scene_videos" not in state:
                         state["scene_videos"] = {}
                     state["scene_videos"][sn] = out_path
                     self.checkpoint.save_state(job_id, state)
-
-            cleanup_vram()
+            else:
+                with LocalVideoProvider() as video_provider:
+                    for scene in screenplay["scenes"]:
+                        sn = str(scene["scene_number"])
+                        if sn in state.get("scene_videos", {}):
+                            logger.info(f"[{job_id}] Skipping video for scene {sn}, already generated.")
+                            continue
+    
+                        vid_prompt = scene["video_prompt"]
+                        out_path = os.path.join(job_dir, f"scene_{sn}.mp4")
+    
+                        video_provider.generate_from_text(vid_prompt, out_path)
+    
+                        if "scene_videos" not in state:
+                            state["scene_videos"] = {}
+                        state["scene_videos"][sn] = out_path
+                        self.checkpoint.save_state(job_id, state)
+    
+                cleanup_vram()
 
             state["status"] = "assembling_video"
             self.checkpoint.save_state(job_id, state)

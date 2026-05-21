@@ -7,7 +7,7 @@ COPY frontend/ .
 RUN npm run build
 
 # Stage 2: Runtime Environment
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
@@ -29,21 +29,20 @@ RUN ln -s /usr/bin/python3.10 /usr/bin/python && \
 
 WORKDIR /app
 
-# 2. Install Core AI Stack (Pinned & Verified for CUDA 12.1)
+# 2. Install Core AI Stack (Upgraded for Blackwell sm_120 support)
 RUN pip install --no-cache-dir \
-    torch==2.4.1 \
-    torchvision==0.19.1 \
-    torchaudio==2.4.1 \
-    --index-url https://download.pytorch.org/whl/cu121
+    torch==2.6.0 \
+    torchvision==0.21.0 \
+    torchaudio==2.6.0 \
+    --index-url https://download.pytorch.org/whl/cu124
+
 
 # 3. Install Application Dependencies
 RUN pip install --no-cache-dir \
     "diffusers>=0.38.0,<0.39.0" \
     "transformers>=4.44.0,<4.50.0" \
     "accelerate>=0.33.0,<0.35.0" \
-    "safetensors>=0.4.0,<0.5.0" \
-    "bitsandbytes>=0.43.0,<0.44.0" \
-    "xformers==0.0.28.post1" \
+    "safetensors>=0.4.0" \
     "numpy<2.0.0" \
     "moviepy>=1.0.3,<3.0.0" \
     "fastapi>=0.110.0,<0.116.0" \

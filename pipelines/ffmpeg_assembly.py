@@ -25,8 +25,10 @@ class FFmpegAssemblyPipeline:
 
                 clip = VideoFileClip(path)
                 if clip.fps != self.target_fps:
-                    clip = clip.set_fps(self.target_fps)
-
+                    if hasattr(clip, "with_fps"):
+                        clip = clip.with_fps(self.target_fps)
+                    else:
+                        clip = clip.set_fps(self.target_fps)
                 clips.append(clip)
 
             if not clips:
