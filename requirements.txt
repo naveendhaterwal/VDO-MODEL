@@ -1,18 +1,14 @@
-# Core AI stack - pinned for Blackwell GPU (sm_120) + CUDA 12.4 compatibility
-# Note: torch installed from PyTorch index in Dockerfile; listed here for CI
-torch==2.6.0
-torchvision==0.21.0
-torchaudio==2.6.0
-
-# Diffusion & generation
+# Core AI stack
+# NOTE: torch/torchvision/torchaudio installed separately in CI and Dockerfile
+# to control the index URL (PyTorch CUDA vs CPU wheel)
 diffusers>=0.38.0,<0.39.0
 transformers>=4.44.0,<4.50.0
 accelerate>=0.33.0,<0.35.0
 safetensors>=0.4.0
 
-# NOTE: bitsandbytes and xformers removed - they crash without GPU drivers at import time
-# bitsandbytes requires triton which needs active CUDA drivers even on CPU
-# xformers 0.0.35 requires torch>=2.10 (conflicts with 2.6.0)
+# NOTE: bitsandbytes and xformers intentionally excluded
+# - bitsandbytes crashes at import without active GPU/triton drivers
+# - xformers 0.0.35 requires torch>=2.10 (conflicts with torch 2.6.0)
 
 # Utilities
 numpy<2.0.0
