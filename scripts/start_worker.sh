@@ -64,8 +64,10 @@ fi
 
 # 6. Start RQ Worker (Background)
 echo "[INFO] Starting RQ Worker..."
-rq worker default --url "$REDIS_URL" --with-scheduler &
+RQ_QUEUE="${RQ_QUEUE:-cinematic_jobs}"
+rq worker "$RQ_QUEUE" --url "$REDIS_URL" --with-scheduler &
 WORKER_PID=$!
+
 
 # 7. Trap signals for graceful shutdown
 cleanup() {

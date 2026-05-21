@@ -1,28 +1,18 @@
 {
   "version": "0.1",
   "type": "container",
-  "meta": {
-    "trigger": "dashboard",
-    "system_requirements": {
-      "required_vram": 40,
-      "min_vram": 40,
-      "recommended_gpu": "A100 40GB",
-      "min_cuda_version": "12.4",
-      "recommended_disk": 100
-    }
-  },
   "ops": [
     {
-      "id": "Cinematic-Worker",
       "type": "container/run",
+      "id": "Cinematic-Worker",
       "args": {
         "image": "docker.io/naveendhaterwal/vimax:latest",
         "cmd": [
           "/bin/bash",
           "/app/scripts/start_worker.sh"
         ],
-        "gpu": true,
         "expose": 8000,
+        "gpu": true,
         "env": {
           "REDIS_URL": "redis://localhost:6379",
           "MODEL_DIR": "/app/models",
@@ -31,5 +21,12 @@
         }
       }
     }
-  ]
+  ],
+  "deployment_id": "ASSX3fSQmQE7CnZ6DgppANtueqsJL2qmeZmpzKLiVdRq",
+  "meta": {
+    "trigger": "deployment-manager",
+    "system_requirements": {
+      "required_vram": 24
+    }
+  }
 }

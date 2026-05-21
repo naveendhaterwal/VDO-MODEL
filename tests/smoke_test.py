@@ -230,8 +230,8 @@ class TestNosanaConfig:
         with open(os.path.join(os.path.dirname(__file__), "..", "nosana-job.json")) as f:
             config = json.load(f)
         meta = config["meta"]["system_requirements"]
-        assert meta["min_vram"] >= 24
-        assert meta["min_cuda_version"]
+        assert meta["required_vram"] >= 24
+
 
 
 # ===========================================================================

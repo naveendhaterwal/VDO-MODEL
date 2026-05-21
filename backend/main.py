@@ -28,9 +28,11 @@ logger = logging.getLogger(__name__)
 
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/app/outputs")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379")
+RQ_QUEUE = os.environ.get("RQ_QUEUE", "cinematic_jobs")
 
 redis_conn = Redis.from_url(REDIS_URL)
-q = Queue("cinematic_jobs", connection=redis_conn)
+q = Queue(RQ_QUEUE, connection=redis_conn)
+
 
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST, REGISTRY
 

@@ -7,7 +7,7 @@ COPY frontend/ .
 RUN npm run build
 
 # Stage 2: Runtime Environment
-FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
@@ -31,10 +31,11 @@ WORKDIR /app
 
 # 2. Install Core AI Stack (Upgraded for Blackwell sm_120 support)
 RUN pip install --no-cache-dir \
-    torch==2.6.0 \
-    torchvision==0.21.0 \
-    torchaudio==2.6.0 \
-    --index-url https://download.pytorch.org/whl/cu124
+    torch \
+    torchvision \
+    torchaudio \
+    --index-url https://download.pytorch.org/whl/cu128
+
 
 
 # 3. Install Application Dependencies
