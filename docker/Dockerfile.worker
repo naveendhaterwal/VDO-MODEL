@@ -63,8 +63,8 @@ RUN pip install --no-cache-dir \
 COPY . /app/
 COPY --from=frontend-builder /app/frontend/out /app/frontend/out
 
-# 5. Create output dir
-RUN mkdir -p /app/outputs
+# 5. Create output dir and nvidia-persistenced dir
+RUN mkdir -p /app/outputs && mkdir -p /run/nvidia-persistenced
 
 # 6. Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \

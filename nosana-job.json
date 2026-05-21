@@ -17,7 +17,10 @@
           "REDIS_URL": "redis://localhost:6379",
           "MODEL_DIR": "/app/models",
           "OUTPUT_DIR": "/app/outputs",
-          "RQ_QUEUE": "cinematic_jobs"
+          "RQ_QUEUE": "cinematic_jobs",
+          "NVIDIA_DISABLE_REQUIRE": "1",
+          "NVIDIA_VISIBLE_DEVICES": "all",
+          "NVIDIA_DRIVER_CAPABILITIES": "compute,utility,video"
         }
       }
     }
