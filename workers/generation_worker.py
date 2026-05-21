@@ -36,7 +36,7 @@ def generate_video_task(job_id: str, prompt: str):
     heartbeat_thread.start()
 
     try:
-        pipeline = CinematicPipeline(output_dir="/app/outputs")
+        pipeline = CinematicPipeline(output_dir=os.environ.get("OUTPUT_DIR", "/app/outputs"))
         final_video_path = pipeline.run(job_id, prompt)
         logger.info(f"Task completed successfully: {final_video_path}")
         return {"status": "completed", "video_path": final_video_path}

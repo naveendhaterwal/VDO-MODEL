@@ -19,6 +19,7 @@ def download_with_retry(repo_id, local_dir, token, max_retries=3, delay=5):
                 repo_id=repo_id,
                 local_dir=local_dir,
                 max_workers=8,
+                local_dir_use_symlinks=True,
                 ignore_patterns=[
                     "*.msgpack", "*.h5", "*.ot",
                     "*onnx*", "*openvino*", "*coreml*", "*flax*",

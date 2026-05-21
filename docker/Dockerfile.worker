@@ -38,6 +38,8 @@ RUN pip install --no-cache-dir \
 
 
 
+RUN pip install --no-cache-dir xformers==0.0.27
+
 # 3. Install Application Dependencies
 RUN pip install --no-cache-dir \
     "diffusers>=0.38.0,<0.39.0" \

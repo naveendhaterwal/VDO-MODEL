@@ -47,8 +47,8 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Shutting down...")
     if torch.cuda.is_available():
-        torch.cuda.empty_cache()
         gc.collect()
+        torch.cuda.empty_cache()
     logger.info("Cleanup complete.")
 
 
@@ -154,7 +154,7 @@ async def metrics():
 
 
 # Mount frontend static files if present (e.g. in Docker container), otherwise skip to allow local testing
-static_dir = "/app/frontend/out"
+static_dir = os.environ.get("STATIC_DIR", "/app/frontend/out")
 if os.path.exists(static_dir):
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="frontend")
 else:
