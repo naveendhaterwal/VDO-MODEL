@@ -42,9 +42,10 @@ RUN pip install --no-cache-dir \
 # xformers 0.0.29.post3 supports torch 2.6.x (0.0.27 was for torch 2.5.x)
 RUN pip install --no-cache-dir "xformers==0.0.29.post3" --index-url https://download.pytorch.org/whl/cu124
 
-# 4. Install bitsandbytes (required by LocalChatProvider for 4-bit quantization)
-# Must be installed BEFORE other deps to avoid version conflicts
-RUN pip install --no-cache-dir bitsandbytes>=0.43.0
+# 4. Install bitsandbytes — 0.45.0+ has precompiled kernels for sm_70/75/80/86/89/90
+# This covers: T4 (sm_75), V100 (sm_70), A100 (sm_80), RTX 3090/4090 (sm_86/89)
+# LocalChatProvider has a fallback to float16 if BnB still fails on any exotic GPU
+RUN pip install --no-cache-dir "bitsandbytes>=0.45.0"
 
 # 5. Install Application Dependencies
 RUN pip install --no-cache-dir \
