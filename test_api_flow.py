@@ -1,8 +1,9 @@
+import os
 import requests
 import time
 import sys
 
-API_URL = "http://localhost:8000"
+API_URL = os.environ.get("API_URL", "http://localhost:8000")
 
 def test_flow():
     print(f"Submitting mock video generation request to {API_URL}/generate...")
@@ -28,14 +29,14 @@ def test_flow():
             status_data = res.json()
             status = status_data["status"]
             print(f"Status: {status}")
-            
+
             if status == "finished":
                 print(f"✅ Video generated successfully! Result URL: {status_data['result']}")
                 break
             elif status == "failed":
                 print(f"❌ Job failed: {status_data.get('result')}")
-                break
-                
+                sys.exit(1)
+
             time.sleep(2)
         except Exception as e:
             print(f"Failed to get status: {e}")

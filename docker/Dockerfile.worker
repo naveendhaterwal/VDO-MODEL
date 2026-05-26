@@ -7,6 +7,7 @@ COPY frontend/ .
 RUN npm run build
 
 # Stage 2: Runtime Environment
+# cuda 12.8 runtime matches the cu128 PyTorch wheel index
 FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -29,24 +30,30 @@ RUN ln -s /usr/bin/python3.10 /usr/bin/python && \
 
 WORKDIR /app
 
-# 2. Install Core AI Stack (Upgraded for Blackwell sm_120 support)
+# 2. Install PyTorch — pinned to 2.6.0+cu128 for stability with transformers/diffusers
+# DO NOT change this version without testing the full diffusers+transformers compat matrix
 RUN pip install --no-cache-dir \
-    torch \
-    torchvision \
-    torchaudio \
+    torch==2.6.0 \
+    torchvision==0.21.0 \
+    torchaudio==2.6.0 \
     --index-url https://download.pytorch.org/whl/cu128
 
+# 3. Install xformers pinned to version compatible with torch 2.6.0
+# xformers 0.0.29.post3 supports torch 2.6.x (0.0.27 was for torch 2.5.x)
+RUN pip install --no-cache-dir "xformers==0.0.29.post3" --index-url https://download.pytorch.org/whl/cu128
 
+# 4. Install bitsandbytes (required by LocalChatProvider for 4-bit quantization)
+# Must be installed BEFORE other deps to avoid version conflicts
+RUN pip install --no-cache-dir bitsandbytes>=0.43.0
 
-RUN pip install --no-cache-dir xformers==0.0.27
-
-# 3. Install Application Dependencies
+# 5. Install Application Dependencies
 RUN pip install --no-cache-dir \
     "diffusers>=0.38.0,<0.39.0" \
-    "transformers>=4.44.0,<4.50.0" \
+    "transformers>=4.48.0,<4.50.0" \
     "accelerate>=0.33.0,<0.35.0" \
     "safetensors>=0.4.0" \
     "numpy<2.0.0" \
+    "Pillow>=9.0.0" \
     "moviepy>=1.0.3,<3.0.0" \
     "fastapi>=0.110.0,<0.116.0" \
     "uvicorn>=0.29.0,<0.31.0" \
@@ -57,16 +64,18 @@ RUN pip install --no-cache-dir \
     "prometheus-client>=0.20.0,<0.22.0" \
     "protobuf>=5.27.0,<5.29.0" \
     "sentencepiece>=0.2.0,<0.3.0" \
-    "pydantic"
+    "pydantic" \
+    "httpx"
 
-# 4. Copy Code
+# 6. Copy Code
 COPY . /app/
 COPY --from=frontend-builder /app/frontend/out /app/frontend/out
 
-# 5. Create output dir and nvidia-persistenced dir
+# 7. Create required runtime directories
+# /run/nvidia-persistenced must exist for crun GPU socket mount
 RUN mkdir -p /app/outputs && mkdir -p /run/nvidia-persistenced
 
-# 6. Healthcheck
+# 8. Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 

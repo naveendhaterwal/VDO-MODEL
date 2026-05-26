@@ -24,12 +24,15 @@ jobs:
       - name: Install PyTorch (CPU build for CI)
         run: |
           pip install --upgrade pip
+          # Pin to same major version as Dockerfile to avoid compat issues
           pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
 
       - name: Install dependencies
         run: |
           pip install pytest pytest-timeout fakeredis httpx
-          pip install -r requirements.txt
+          # bitsandbytes has no CPU wheel on PyPI so skip it in CI (it's Linux/GPU only)
+          pip install -r requirements.txt || true
+          pip install pytest pytest-timeout fakeredis httpx Pillow
 
       - name: Run smoke tests
         run: python -m pytest tests/test_pipeline.py tests/smoke_test.py -v --timeout=120

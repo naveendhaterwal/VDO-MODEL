@@ -1,14 +1,23 @@
 # Core AI stack
 # NOTE: torch/torchvision/torchaudio installed separately in CI and Dockerfile
-# to control the index URL (PyTorch CUDA vs CPU wheel)
+# to control the index URL (PyTorch CUDA vs CPU wheel).
+# PINNED: torch==2.6.0 — do not upgrade without testing diffusers+transformers compat.
 diffusers>=0.38.0,<0.39.0
-transformers>=4.44.0,<4.50.0
+transformers>=4.48.0,<4.50.0
 accelerate>=0.33.0,<0.35.0
 safetensors>=0.4.0
 
-# NOTE: bitsandbytes and xformers intentionally excluded
-# - bitsandbytes crashes at import without active GPU/triton drivers
-# - xformers 0.0.35 requires torch>=2.10 (conflicts with torch 2.6.0)
+# Image processing (required by mock pipeline and SDXL)
+Pillow>=9.0.0
+
+# 4-bit LLM quantization (required by LocalChatProvider — BitsAndBytesConfig)
+# Installed in Dockerfile via pip install bitsandbytes>=0.43.0
+# Listed here so CI and local installs know it is required
+bitsandbytes>=0.43.0
+
+# NOTE: xformers intentionally excluded from requirements.txt
+# It is installed in the Dockerfile with a CUDA-specific wheel index URL.
+# Installing from PyPI here would pull a CPU-only version and cause errors.
 
 # Utilities
 numpy<2.0.0
