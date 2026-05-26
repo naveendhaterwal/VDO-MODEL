@@ -30,17 +30,17 @@ RUN ln -s /usr/bin/python3.10 /usr/bin/python && \
 
 WORKDIR /app
 
-# 2. Install PyTorch — pinned to 2.6.0+cu128 for stability with transformers/diffusers
+# 2. Install PyTorch — pinned to 2.6.0+cu124 for stability with transformers/diffusers
 # DO NOT change this version without testing the full diffusers+transformers compat matrix
 RUN pip install --no-cache-dir \
     torch==2.6.0 \
     torchvision==0.21.0 \
     torchaudio==2.6.0 \
-    --index-url https://download.pytorch.org/whl/cu128
+    --index-url https://download.pytorch.org/whl/cu124
 
 # 3. Install xformers pinned to version compatible with torch 2.6.0
 # xformers 0.0.29.post3 supports torch 2.6.x (0.0.27 was for torch 2.5.x)
-RUN pip install --no-cache-dir "xformers==0.0.29.post3" --index-url https://download.pytorch.org/whl/cu128
+RUN pip install --no-cache-dir "xformers==0.0.29.post3" --index-url https://download.pytorch.org/whl/cu124
 
 # 4. Install bitsandbytes (required by LocalChatProvider for 4-bit quantization)
 # Must be installed BEFORE other deps to avoid version conflicts
