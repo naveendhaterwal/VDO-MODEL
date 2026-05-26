@@ -29,10 +29,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest pytest-timeout fakeredis httpx
-          # bitsandbytes has no CPU wheel on PyPI so skip it in CI (it's Linux/GPU only)
-          pip install -r requirements.txt || true
-          pip install pytest pytest-timeout fakeredis httpx Pillow
+          # bitsandbytes requires CUDA kernels, so remove it for CPU-only CI.
+          grep -v '^bitsandbytes==' requirements.txt > requirements-ci.txt
+          pip install -r requirements-ci.txt
+          pip install pytest pytest-timeout fakeredis
 
       - name: Run smoke tests
         run: python -m pytest tests/test_pipeline.py tests/smoke_test.py -v --timeout=120
