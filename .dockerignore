@@ -5,6 +5,7 @@
 models_bundle/
 frontend/node_modules/
 frontend/.next/
+frontend/out/
 __pycache__/
 *.pyc
 *.pyo
@@ -12,3 +13,6 @@ __pycache__/
 .env
 .env.*
 *.md
+outputs/
+trace_outputs/
+dump.rdb

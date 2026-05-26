@@ -220,7 +220,10 @@ class TestNosanaConfig:
         op = config["ops"][0]
         assert op["args"]["gpu"] is True
         expose = op["args"]["expose"]
-        if isinstance(expose, dict):
+        if isinstance(expose, list):
+            assert expose[0]["port"] == 8000
+            assert expose[0]["health_checks"][0]["path"] == "/health"
+        elif isinstance(expose, dict):
             assert expose["port"] == 8000
         else:
             assert expose == 8000

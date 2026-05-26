@@ -17,6 +17,7 @@ env/
 
 # Outputs & models (large files)
 outputs/
+trace_outputs/
 models/
 models_bundle/
 *.mp4
@@ -42,3 +43,9 @@ logs/
 
 # Docker
 docker-compose.override.yml
+dump.rdb
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/.next/
+frontend/out/

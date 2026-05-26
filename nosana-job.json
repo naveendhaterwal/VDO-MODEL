@@ -4,24 +4,60 @@
   "ops": [
     {
       "type": "container/run",
-      "id": "Cinematic-Worker",
+      "id": "cinematic-worker-v1",
       "args": {
-        "image": "docker.io/naveendhaterwal/vimax:latest",
+        "image": "docker.io/naveendhaterwal/vimax:v1.0.0",
         "cmd": [
-          "/bin/bash",
           "/app/scripts/start_worker.sh"
         ],
-        "expose": 8000,
         "gpu": true,
         "env": {
-          "REDIS_URL": "redis://localhost:6379",
           "MODEL_DIR": "/app/models",
           "OUTPUT_DIR": "/app/outputs",
+          "REDIS_URL": "redis://localhost:6379",
           "RQ_QUEUE": "cinematic_jobs",
+          "APP_EXPECTED_TORCH": "2.6.0",
+          "APP_EXPECTED_TORCH_CUDA": "12.6",
+          "APP_EXPECTED_TRANSFORMERS": "4.49.0",
+          "APP_EXPECTED_DIFFUSERS": "0.38.0",
+          "APP_EXPECTED_BITSANDBYTES": "0.47.0",
+          "MIN_GPU_VRAM_GB": "40",
+          "ENABLE_BNB_4BIT": "1",
           "NVIDIA_DISABLE_REQUIRE": "1",
           "NVIDIA_VISIBLE_DEVICES": "all",
           "NVIDIA_DRIVER_CAPABILITIES": "compute,utility,video"
-        }
+        },
+        "resources": [
+          {
+            "type": "HF",
+            "repo": "Qwen/Qwen2.5-7B-Instruct",
+            "target": "/app/models/Qwen2.5-7B-Instruct"
+          },
+          {
+            "type": "HF",
+            "repo": "stabilityai/stable-diffusion-xl-base-1.0",
+            "target": "/app/models/stable-diffusion-xl-base-1.0"
+          },
+          {
+            "type": "HF",
+            "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+            "target": "/app/models/Wan2.1-T2V-1.3B-Diffusers"
+          }
+        ],
+        "expose": [
+          {
+            "port": 8000,
+            "health_checks": [
+              {
+                "type": "http",
+                "path": "/health",
+                "method": "GET",
+                "expected_status": 200,
+                "continuous": true
+              }
+            ]
+          }
+        ]
       }
     }
   ],
@@ -29,8 +65,8 @@
   "meta": {
     "trigger": "deployment-manager",
     "system_requirements": {
-      "required_vram": 24,
-      "min_cuda_version": "12.1"
+      "required_vram": 40,
+      "min_cuda_version": "12.6"
     }
   }
 }

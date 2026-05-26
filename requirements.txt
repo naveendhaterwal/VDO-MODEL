@@ -1,41 +1,24 @@
-# Core AI stack
-# NOTE: torch/torchvision/torchaudio installed separately in CI and Dockerfile
-# to control the index URL (PyTorch CUDA vs CPU wheel).
-# PINNED: torch==2.6.0 — do not upgrade without testing diffusers+transformers compat.
-diffusers>=0.38.0,<0.39.0
-transformers>=4.48.0,<4.50.0
-accelerate>=0.33.0,<0.35.0
-safetensors>=0.4.0
+# Core ML stack
+accelerate==0.34.2
+bitsandbytes==0.47.0
+diffusers==0.38.0
+huggingface_hub==0.28.1
+numpy==1.26.4
+Pillow==10.4.0
+protobuf==5.28.3
+safetensors==0.5.3
+sentencepiece==0.2.0
+transformers==4.49.0
 
-# Image processing (required by mock pipeline and SDXL)
-Pillow>=9.0.0
+# Video / media
+moviepy==1.0.3
 
-# 4-bit LLM quantization (required by LocalChatProvider — BitsAndBytesConfig)
-# Installed in Dockerfile via pip install bitsandbytes>=0.43.0
-# Listed here so CI and local installs know it is required
-bitsandbytes>=0.43.0
-
-# NOTE: xformers intentionally excluded from requirements.txt
-# It is installed in the Dockerfile with a CUDA-specific wheel index URL.
-# Installing from PyPI here would pull a CPU-only version and cause errors.
-
-# Utilities
-numpy<2.0.0
-moviepy>=1.0.3,<3.0.0
-
-# API server
-fastapi>=0.110.0,<0.116.0
-uvicorn>=0.29.0,<0.31.0
-
-# Queue / Redis
-redis>=5.0.0,<6.0.0
-rq>=1.16.0,<2.0.0
-
-# Misc
-python-dotenv>=1.0.0,<2.0.0
-huggingface_hub>=0.24.0,<2.0.0
-prometheus-client>=0.20.0,<0.22.0
-protobuf>=5.27.0,<5.29.0
-sentencepiece>=0.2.0,<0.3.0
-pydantic
-httpx
+# API / worker
+fastapi==0.115.12
+httpx==0.28.1
+prometheus-client==0.21.1
+pydantic==2.10.6
+python-dotenv==1.0.1
+redis==5.2.1
+rq==1.16.2
+uvicorn==0.30.6

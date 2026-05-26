@@ -1,7 +1,13 @@
 import os
-import torch
 import gc
 import logging
+import torch
+
+from monitoring.gpu_runtime import (
+    format_runtime_banner,
+    get_preferred_torch_dtype,
+    should_enable_4bit_quantization,
+)
 from monitoring.memory_watchdog import MemoryWatchdog
 
 logger = logging.getLogger(__name__)
@@ -20,20 +26,18 @@ class LocalChatProvider:
 
         logger.info(f"Loading {self.model_path} into VRAM...")
         MemoryWatchdog.assert_vram_available(required_gb=14.0)
+        logger.info(format_runtime_banner())
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
 
-        cap = torch.cuda.get_device_capability() if torch.cuda.is_available() else (0, 0)
-        dtype = torch.bfloat16 if cap[0] >= 8 else torch.float16
+        dtype = get_preferred_torch_dtype()
+        enable_4bit = should_enable_4bit_quantization()
+        logger.info(f"Using dtype={dtype} | enable_4bit={enable_4bit}")
 
-        logger.info(f"GPU compute capability: {cap}, using dtype: {dtype}")
-
-        # --- Strategy 1: 4-bit quantization via bitsandbytes (lowest VRAM) ---
-        # Falls back if the node GPU arch doesn't have bitsandbytes kernels
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and enable_4bit:
             try:
                 bnb_config = BitsAndBytesConfig(
-                    load_in_4bit=True,
+                    load_in_4bit=enable_4bit,
                     bnb_4bit_compute_dtype=dtype,
                     bnb_4bit_use_double_quant=True,
                     bnb_4bit_quant_type="nf4",
@@ -48,25 +52,23 @@ class LocalChatProvider:
                 return self
             except Exception as e:
                 logger.warning(
-                    f"BitsAndBytes 4-bit quantization failed on this GPU (arch={cap}): {e}\n"
-                    f"Falling back to float16 without quantization..."
+                    "BitsAndBytes 4-bit quantization failed on this node: %s. "
+                    "Falling back to non-quantized model load.",
+                    e,
                 )
-                # Clear any partial state before retrying
                 if self.model is not None:
                     del self.model
                     self.model = None
                 gc.collect()
                 torch.cuda.empty_cache()
 
-        # --- Strategy 2: Standard float16 load (universal GPU compatibility) ---
-        # Uses more VRAM (~14GB vs ~7GB for 4-bit) but runs on ALL CUDA GPUs
-        logger.info("Loading model in float16 without quantization...")
+        logger.info("Loading model without quantization...")
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
             torch_dtype=dtype,
             device_map="auto",
         )
-        logger.info("Model loaded successfully in float16 (no quantization).")
+        logger.info("Model loaded successfully without quantization.")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

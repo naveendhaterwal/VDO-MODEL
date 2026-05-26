@@ -1,9 +1,10 @@
 import os
-import torch
-import gc
 import logging
+import torch
 from diffusers import WanPipeline
 from diffusers.utils import export_to_video
+
+from monitoring.gpu_runtime import format_runtime_banner, get_preferred_torch_dtype
 from monitoring.memory_watchdog import MemoryWatchdog
 
 logger = logging.getLogger(__name__)
@@ -18,14 +19,12 @@ class LocalVideoProvider:
     def __enter__(self):
         logger.info(f"Loading {self.model_path} into VRAM...")
         MemoryWatchdog.assert_vram_available(required_gb=20.0)
-        cap = torch.cuda.get_device_capability() if torch.cuda.is_available() else (0, 0)
-        dtype = torch.bfloat16 if cap[0] >= 8 else torch.float16
-        # WanPipeline correctly resolves and loads Wan2.1 text-to-video models
+        logger.info(format_runtime_banner())
+        dtype = get_preferred_torch_dtype()
         self.pipe = WanPipeline.from_pretrained(
             self.model_path,
             torch_dtype=dtype,
         )
-        # A100/H100/Blackwell have enough VRAM — run fully on GPU (skip cpu_offload for speed)
         if torch.cuda.is_available():
             self.pipe = self.pipe.to("cuda")
         self.pipe.enable_vae_slicing()

@@ -62,7 +62,6 @@ jobs:
           images: naveendhaterwal/vimax
           tags: |
             type=sha,prefix=
-            type=raw,value=latest
             type=raw,value=v${{ github.run_number }}
 
       - name: Build and push

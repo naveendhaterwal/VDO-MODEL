@@ -1,94 +1,102 @@
-#!/bin/bash
-set -eo pipefail
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-echo "========================================"
-echo " Starting Hardened Cinematic Worker Boot "
-echo "========================================"
-
-# 1. Pre-flight GPU Verification
-python3 /app/scripts/gpu_verify.py || { echo "[CRITICAL] GPU verification failed."; exit 1; }
-
-# 2. Disk Space Cleanup (Aggressive)
-echo "[INFO] Checking disk space..."
-FREE_SPACE=$(df -BG /app | awk 'NR==2 {print $4}' | sed 's/G//')
-if [ "$FREE_SPACE" -lt 40 ]; then
-    echo "[WARNING] Low space (${FREE_SPACE}GB). Cleaning caches..."
-    rm -rf /root/.cache/pip 2>/dev/null || true
-    rm -rf /tmp/* 2>/dev/null || true
-fi
-
-# 3. Model Preloading
-echo "[INFO] Starting model verification pipeline..."
-export MODEL_DIR="${MODEL_DIR:-/app/models}"
-python3 /app/scripts/preload_models.py
-
-# 4. Determine Redis URL
 REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
-echo "[INFO] Redis URL: $REDIS_URL"
+RQ_QUEUE="${RQ_QUEUE:-cinematic_jobs}"
+MODEL_DIR="${MODEL_DIR:-/app/models}"
+OUTPUT_DIR="${OUTPUT_DIR:-/app/outputs}"
+SHUTTING_DOWN=0
+WORKER_PID=""
+UVICORN_PID=""
 
-# 5. Start Redis only if connecting to localhost (embedded mode)
-# In docker-compose or multi-container setups, Redis runs externally
-if [[ "$REDIS_URL" == redis://localhost:* ]] || [[ "$REDIS_URL" == redis://127.0.0.1:* ]]; then
-    echo "[INFO] Starting embedded Redis..."
-    redis-server --daemonize yes
+log() {
+  printf '[%s] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$1"
+}
 
-    # Wait for Redis to be ready
-    MAX_RETRIES=15
-    COUNT=0
-    while ! redis-cli ping &>/dev/null; do
-        if [ $COUNT -ge $MAX_RETRIES ]; then
-            echo "[CRITICAL] Redis failed to start."
-            exit 1
-        fi
-        echo "[INFO] Waiting for Redis... ($COUNT)"
-        sleep 1
-        ((COUNT++))
-    done
-    echo "[OK] Redis is ready."
+cleanup() {
+  local exit_code="${1:-0}"
+  SHUTTING_DOWN=1
+
+  log "Shutting down services..."
+
+  if [[ -n "${UVICORN_PID}" ]] && kill -0 "${UVICORN_PID}" 2>/dev/null; then
+    kill "${UVICORN_PID}" 2>/dev/null || true
+    wait "${UVICORN_PID}" 2>/dev/null || true
+  fi
+
+  if [[ -n "${WORKER_PID}" ]] && kill -0 "${WORKER_PID}" 2>/dev/null; then
+    kill "${WORKER_PID}" 2>/dev/null || true
+    wait "${WORKER_PID}" 2>/dev/null || true
+  fi
+
+  if [[ "${REDIS_URL}" == redis://localhost:* ]] || [[ "${REDIS_URL}" == redis://127.0.0.1:* ]]; then
+    redis-cli shutdown 2>/dev/null || true
+  fi
+
+  log "Shutdown complete with exit code ${exit_code}."
+  exit "${exit_code}"
+}
+
+trap 'cleanup 143' SIGTERM SIGINT
+
+mkdir -p "${MODEL_DIR}" "${OUTPUT_DIR}"
+
+log "========================================"
+log " Starting Production Cinematic Worker Boot "
+log "========================================"
+log "MODEL_DIR=${MODEL_DIR}"
+log "OUTPUT_DIR=${OUTPUT_DIR}"
+log "REDIS_URL=${REDIS_URL}"
+log "RQ_QUEUE=${RQ_QUEUE}"
+
+python /app/scripts/gpu_verify.py
+python /app/scripts/preload_models.py
+
+if [[ "${REDIS_URL}" == redis://localhost:* ]] || [[ "${REDIS_URL}" == redis://127.0.0.1:* ]]; then
+  log "Starting embedded Redis..."
+  redis-server --daemonize yes
+  for attempt in $(seq 1 15); do
+    if redis-cli ping >/dev/null 2>&1; then
+      log "Embedded Redis is ready."
+      break
+    fi
+    if [[ "${attempt}" == "15" ]]; then
+      log "Redis failed to start."
+      exit 1
+    fi
+    sleep 1
+  done
 else
-    echo "[INFO] Using external Redis at $REDIS_URL"
-    # Verify connection
-    MAX_RETRIES=10
-    COUNT=0
-    while ! redis-cli -u "$REDIS_URL" ping &>/dev/null; do
-        if [ $COUNT -ge $MAX_RETRIES ]; then
-            echo "[CRITICAL] Cannot connect to Redis at $REDIS_URL"
-            exit 1
-        fi
-        echo "[INFO] Waiting for Redis... ($COUNT)"
-        sleep 2
-        ((COUNT++))
-    done
-    echo "[OK] Redis connection verified."
+  log "Using external Redis at ${REDIS_URL}"
+  for attempt in $(seq 1 10); do
+    if redis-cli -u "${REDIS_URL}" ping >/dev/null 2>&1; then
+      log "External Redis connection verified."
+      break
+    fi
+    if [[ "${attempt}" == "10" ]]; then
+      log "Cannot connect to external Redis."
+      exit 1
+    fi
+    sleep 2
+  done
 fi
 
-# 6. Start RQ Worker (Background)
-echo "[INFO] Starting RQ Worker..."
-RQ_QUEUE="${RQ_QUEUE:-cinematic_jobs}"
-rq worker "$RQ_QUEUE" --url "$REDIS_URL" --with-scheduler &
+log "Starting RQ worker..."
+rq worker "${RQ_QUEUE}" --url "${REDIS_URL}" --with-scheduler &
 WORKER_PID=$!
 
-
-# 7. Trap signals for graceful shutdown
-cleanup() {
-    echo "[INFO] Shutting down gracefully..."
-    kill $WORKER_PID 2>/dev/null
-    wait $WORKER_PID 2>/dev/null
-    if [[ "$REDIS_URL" == redis://localhost:* ]] || [[ "$REDIS_URL" == redis://127.0.0.1:* ]]; then
-        redis-cli shutdown 2>/dev/null
-    fi
-    echo "[INFO] Shutdown complete."
-    exit 0
-}
-trap cleanup SIGTERM SIGINT
-
-# 8. Start FastAPI (Foreground)
-echo "[INFO] Starting FastAPI Backend..."
+log "Starting FastAPI backend..."
 uvicorn backend.main:app --host 0.0.0.0 --port 8000 &
 UVICORN_PID=$!
 
-# 9. Wait for either process to exit
-wait -n $UVICORN_PID $WORKER_PID
-CLEANUP_EXIT_CODE=$?
-cleanup
-exit $CLEANUP_EXIT_CODE
+log "Services started. worker_pid=${WORKER_PID} api_pid=${UVICORN_PID}"
+
+EXITED_PID=""
+wait -n -p EXITED_PID "${UVICORN_PID}" "${WORKER_PID}"
+CHILD_EXIT_CODE=$?
+
+if [[ "${SHUTTING_DOWN}" == "0" ]]; then
+  log "Child process ${EXITED_PID} exited unexpectedly with code ${CHILD_EXIT_CODE}."
+fi
+
+cleanup "${CHILD_EXIT_CODE}"

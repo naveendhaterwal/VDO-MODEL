@@ -1,83 +1,93 @@
-# Stage 1: Build Frontend
-FROM node:20-alpine AS frontend-builder
+FROM node:20.14.0-alpine AS frontend-builder
+
 WORKDIR /app/frontend
-COPY frontend/package*.json ./
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
-COPY frontend/ .
+COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Runtime Environment
-# cuda 12.8 runtime matches the cu128 PyTorch wheel index
-FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
+FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-ENV VRAM_LIMIT_GB=40
-ENV MODEL_DIR=/app/models
-ENV OUTPUT_DIR=/app/outputs
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# 1. Install System Dependencies
-RUN apt-get update && apt-get install -y \
-    python3.10 python3.10-venv python3-pip \
-    git ffmpeg libsm6 libxext6 \
-    libgl1-mesa-glx libglib2.0-0 \
-    procps wget curl unzip \
-    redis-server redis-tools \
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app \
+    PIP_NO_CACHE_DIR=1 \
+    HF_HUB_DISABLE_SYMLINKS_WARNING=1 \
+    HF_HOME=/root/.cache/huggingface \
+    MODEL_DIR=/app/models \
+    OUTPUT_DIR=/app/outputs \
+    APP_IMAGE_TAG=v1.0.0 \
+    APP_EXPECTED_TORCH=2.6.0 \
+    APP_EXPECTED_TORCH_CUDA=12.6 \
+    APP_EXPECTED_TRANSFORMERS=4.49.0 \
+    APP_EXPECTED_DIFFUSERS=0.38.0 \
+    APP_EXPECTED_BITSANDBYTES=0.47.0 \
+    MIN_GPU_VRAM_GB=40 \
+    ENABLE_BNB_4BIT=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    build-essential \
+    ca-certificates \
+    curl \
+    ffmpeg \
+    git \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    pkg-config \
+    procps \
+    python3.10 \
+    python3.10-venv \
+    python3-pip \
+    redis-server \
+    redis-tools \
+    tini \
+    unzip \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-RUN ln -s /usr/bin/python3.10 /usr/bin/python && \
-    python -m pip install --upgrade "pip<24.0"
+RUN ln -sf /usr/bin/python3.10 /usr/local/bin/python && \
+    ln -sf /usr/bin/pip3 /usr/local/bin/pip && \
+    python --version && \
+    python -m pip install --upgrade pip==23.3.2 setuptools==70.0.0 wheel==0.43.0
 
 WORKDIR /app
 
-# 2. Install PyTorch — pinned to 2.6.0+cu124 for stability with transformers/diffusers
-# DO NOT change this version without testing the full diffusers+transformers compat matrix
-RUN pip install --no-cache-dir \
+COPY requirements.txt /app/requirements.txt
+
+RUN python -m pip install \
     torch==2.6.0 \
     torchvision==0.21.0 \
     torchaudio==2.6.0 \
-    --index-url https://download.pytorch.org/whl/cu124
+    --index-url https://download.pytorch.org/whl/cu126
 
-# 3. Install xformers pinned to version compatible with torch 2.6.0
-# xformers 0.0.29.post3 supports torch 2.6.x (0.0.27 was for torch 2.5.x)
-RUN pip install --no-cache-dir "xformers==0.0.29.post3" --index-url https://download.pytorch.org/whl/cu124
+RUN python -m pip install xformers==0.0.29.post3 --index-url https://download.pytorch.org/whl/cu126
+RUN python -m pip install -r /app/requirements.txt
 
-# 4. Install bitsandbytes — 0.45.0+ has precompiled kernels for sm_70/75/80/86/89/90
-# This covers: T4 (sm_75), V100 (sm_70), A100 (sm_80), RTX 3090/4090 (sm_86/89)
-# LocalChatProvider has a fallback to float16 if BnB still fails on any exotic GPU
-RUN pip install --no-cache-dir "bitsandbytes>=0.45.0"
-
-# 5. Install Application Dependencies
-RUN pip install --no-cache-dir \
-    "diffusers>=0.38.0,<0.39.0" \
-    "transformers>=4.48.0,<4.50.0" \
-    "accelerate>=0.33.0,<0.35.0" \
-    "safetensors>=0.4.0" \
-    "numpy<2.0.0" \
-    "Pillow>=9.0.0" \
-    "moviepy>=1.0.3,<3.0.0" \
-    "fastapi>=0.110.0,<0.116.0" \
-    "uvicorn>=0.29.0,<0.31.0" \
-    "redis>=5.0.0,<6.0.0" \
-    "rq>=1.16.0,<2.0.0" \
-    "python-dotenv>=1.0.0,<2.0.0" \
-    "huggingface_hub>=0.24.0,<2.0.0" \
-    "prometheus-client>=0.20.0,<0.22.0" \
-    "protobuf>=5.27.0,<5.29.0" \
-    "sentencepiece>=0.2.0,<0.3.0" \
-    "pydantic" \
-    "httpx"
-
-# 6. Copy Code
-COPY . /app/
+COPY backend /app/backend
+COPY monitoring /app/monitoring
+COPY orchestration /app/orchestration
+COPY pipelines /app/pipelines
+COPY providers /app/providers
+COPY scripts /app/scripts
+COPY storage /app/storage
+COPY tests /app/tests
+COPY workers /app/workers
+COPY frontend/package.json /app/frontend/package.json
 COPY --from=frontend-builder /app/frontend/out /app/frontend/out
+COPY nosana-job.json /app/nosana-job.json
+COPY test_api_flow.py /app/test_api_flow.py
 
-# 7. Create required runtime directories
-# /run/nvidia-persistenced must exist for crun GPU socket mount
-RUN mkdir -p /app/outputs && mkdir -p /run/nvidia-persistenced
+RUN chmod +x /app/scripts/start_worker.sh && \
+    mkdir -p /app/models /app/outputs /run/nvidia-persistenced
 
-# 8. Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
+    CMD curl -fsS http://localhost:8000/health || exit 1
 
-CMD ["bash", "/app/scripts/start_worker.sh"]
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["/app/scripts/start_worker.sh"]

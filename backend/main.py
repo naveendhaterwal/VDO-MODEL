@@ -16,6 +16,7 @@ import logging
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from monitoring.gpu_runtime import get_primary_gpu_runtime_info
 logger = logging.getLogger("uvicorn.error")
 
 
@@ -143,7 +144,15 @@ async def get_result(job_id: str):
 async def health_check():
     try:
         redis_conn.ping()
-        return {"status": "ok", "redis": "connected"}
+        gpu_info = get_primary_gpu_runtime_info()
+        return {
+            "status": "ok",
+            "redis": "connected",
+            "queue": RQ_QUEUE,
+            "cuda_available": gpu_info.cuda_available,
+            "gpu_name": gpu_info.device_name,
+            "compute_capability": gpu_info.compute_capability,
+        }
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")
 
