@@ -13,6 +13,11 @@ def test_flow():
             json={"prompt": "A cinematic video of a mock test running end-to-end"}
         )
         response.raise_for_status()
+    except requests.exceptions.ConnectionError:
+        print(f"❌ Failed to connect to {API_URL}.")
+        print("💡 Ensure the FastAPI backend is running before running this script.")
+        print("   You can start it with: uvicorn backend.main:app --reload")
+        sys.exit(1)
     except Exception as e:
         print(f"Failed to submit request: {e}")
         sys.exit(1)

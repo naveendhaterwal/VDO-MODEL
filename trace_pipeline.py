@@ -1,6 +1,5 @@
 import os
 import sys
-import json
 import uuid
 import logging
 from unittest.mock import patch
@@ -95,7 +94,6 @@ def cleanup_vram_mock():
     pass
 
 # Patch the imports BEFORE loading CinematicPipeline
-import sys
 from unittest.mock import MagicMock
 sys.modules['providers.LocalChatProvider'] = MagicMock(LocalChatProvider=MockChatProvider)
 sys.modules['providers.LocalImageProvider'] = MagicMock(LocalImageProvider=MockImageProvider)
@@ -119,5 +117,5 @@ with patch('storage.checkpoint.CheckpointManager', new=MockCheckpointManager), \
         final_video = pipeline.run(job_id, prompt)
         logger.info("\n✅ PIPELINE TRACE COMPLETED SUCCESSFULLY")
         logger.info(f"🎬 Final Video Path: {final_video}")
-    except Exception as e:
+    except Exception:
         logger.exception("\n❌ PIPELINE CRASHED")

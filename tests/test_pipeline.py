@@ -17,12 +17,8 @@ import json
 import re
 import uuid
 import logging
-import tempfile
-import threading
-import time
-import gc
 import pytest
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 from pathlib import Path
 
 # Add project root to path
@@ -119,9 +115,9 @@ class TestDependencyVersions:
         try:
             # moviepy v2 removed the .editor submodule
             try:
-                from moviepy import VideoFileClip  # v2
+                from moviepy import VideoFileClip  # noqa
             except ImportError:
-                from moviepy.editor import VideoFileClip  # v1
+                from moviepy.editor import VideoFileClip  # noqa
             import moviepy
             ver = getattr(moviepy, "__version__", "installed")
             record("moviepy", True, f"v{ver}")
@@ -452,7 +448,6 @@ class TestAPIEndpoints:
             yield
 
     def test_generate_endpoint_enqueues_job(self, tmp_path):
-        import importlib
         import sys
         import prometheus_client
         for mod in list(sys.modules.keys()):
