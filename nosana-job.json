@@ -6,7 +6,7 @@
       "type": "container/run",
       "id": "cinematic-worker-v1",
       "args": {
-        "image": "docker.io/naveendhaterwal/vimax:v1.0.0",
+        "image": "docker.io/naveendhaterwal/vimax:v47",
         "cmd": [
           "/app/scripts/start_worker.sh"
         ],
@@ -27,23 +27,6 @@
           "NVIDIA_VISIBLE_DEVICES": "all",
           "NVIDIA_DRIVER_CAPABILITIES": "compute,utility,video"
         },
-        "resources": [
-          {
-            "type": "HF",
-            "repo": "Qwen/Qwen2.5-7B-Instruct",
-            "target": "/app/models/Qwen2.5-7B-Instruct"
-          },
-          {
-            "type": "HF",
-            "repo": "stabilityai/stable-diffusion-xl-base-1.0",
-            "target": "/app/models/stable-diffusion-xl-base-1.0"
-          },
-          {
-            "type": "HF",
-            "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-            "target": "/app/models/Wan2.1-T2V-1.3B-Diffusers"
-          }
-        ],
         "expose": [
           {
             "port": 8000,
