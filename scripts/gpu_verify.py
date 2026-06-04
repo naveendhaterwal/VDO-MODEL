@@ -63,6 +63,14 @@ def verify_gpu() -> None:
             f"PyTorch CUDA mismatch: expected {expected_torch_cuda}, got {info.torch_cuda_version}"
         )
 
+    major = float(info.compute_capability.split('.')[0])
+    if major >= 10 and os.environ.get("ALLOW_UNSUPPORTED_GPU") != "1":
+        raise RuntimeError(
+            f"Unsupported GPU architecture: Compute Capability {info.compute_capability}. "
+            "PyTorch 2.6.0 only supports up to Hopper (sm_90). "
+            "Please deploy on a node with an A100, H100, RTX 4090, L40S, or A6000."
+        )
+
     min_vram_gb = float(os.environ.get("MIN_GPU_VRAM_GB", "40"))
     if info.total_vram_gb < min_vram_gb:
         raise RuntimeError(
