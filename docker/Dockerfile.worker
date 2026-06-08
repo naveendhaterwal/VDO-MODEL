@@ -83,9 +83,6 @@ COPY --from=frontend-builder /app/frontend/out /app/frontend/out
 COPY nosana-job.json /app/nosana-job.json
 COPY test_api_flow.py /app/test_api_flow.py
 
-# Bake models into the Docker image so they don't have to be downloaded on Nosana nodes
-RUN python /app/scripts/preload_models.py
-
 RUN chmod +x /app/scripts/start_worker.sh && \
     mkdir -p /app/models /app/outputs /run/nvidia-persistenced
 
